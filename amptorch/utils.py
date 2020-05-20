@@ -299,10 +299,10 @@ def convert_simple_nn_fps(traj, Gs, cores, label, save, delete_old=True):
     fp_dir = "data"+label
     if len(traj) > 1:
         with Pool(cores) as p:
-            l_trajs = [image + (Gs, label, fp_dir) for image in l_trajs]
+            l_trajs = [image + (Gs, label, fp_dir, False) for image in l_trajs]
             p.map(reorganize, l_trajs)
     else:
-        image = (0, traj[0], Gs, label, fp_dir)
+        image = (0, traj[0], Gs, label, fp_dir, True)
         fps, fp_primes = reorganize(image, save=save)
     if delete_old:
         os.rmdir("./data"+label)
@@ -313,7 +313,7 @@ def convert_simple_nn_fps(traj, Gs, cores, label, save, delete_old=True):
 
 
 def reorganize(inp, delete_old=True, save=True):
-    i, image, Gs, label, fp_dir = inp
+    i, image, Gs, label, fp_dir, return_ = inp
     pic = pickle.load(open(fp_dir+"/data{}.pickle".format(i + 1), "rb"))
     im_hash = get_hash(image, Gs)
     x_list = reorganize_simple_nn_fp(image, pic["x"])
@@ -325,7 +325,10 @@ def reorganize(inp, delete_old=True, save=True):
         )
     if delete_old:  # in case disk space is an issue
         os.remove(fp_dir+"/data{}.pickle".format(i + 1))
-    return x_list, x_der_dict
+    if return_:
+        return x_list, x_der_dict
+    else:
+        return 0,0
 
 
 class DummySimple_nn(object):
