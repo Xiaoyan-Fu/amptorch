@@ -19,7 +19,7 @@ from amptorch.data_preprocess import (
     collate_amp,
     TestDataset,
 )
-from amptorch.model import FullNN, CustomMSELoss
+from amptorch.model import BPNN, CustomMSELoss
 from ase.calculators.calculator import Calculator, Parameters
 import torch
 
@@ -43,7 +43,7 @@ class AMP(Calculator):
 
     implemented_properties = ["energy", "forces"]
 
-    def __init__(self, training_data, model, label, save_logs=True):
+    def __init__(self, training_data, model, label, save_fps=False, save_logs=True, specific_atoms=False):
         Calculator.__init__(self)
 
         os.makedirs("results/", exist_ok=True)
@@ -55,15 +55,17 @@ class AMP(Calculator):
         self.scalings = training_data.scalings
         self.target_ref_per_atom = self.scalings[0]
         self.delta_ref_per_atom = self.scalings[1]
+        self.scale = self.scalings[2]
         self.delta = training_data.delta
         self.Gs = training_data.Gs
         self.fprange = training_data.fprange
         self.descriptor = training_data.base_descriptor
         self.cores = training_data.cores
         self.training_data = training_data
+        self.save_fps = save_fps
+        self.specific_atoms = specific_atoms
         if self.delta:
-            self.params = self.training_data.delta_data[3]
-            self.delta_model = self.training_data.delta_data[4]
+            self.delta_model = self.training_data.delta_data[3]
 
         # TODO make utility logging function
         self.log = Logger("results/logs/{}.txt".format(label))
@@ -143,7 +145,10 @@ class AMP(Calculator):
             fprange=self.fprange,
             label=self.testlabel,
             cores=self.cores,
+            save_fps=self.save_fps,
+            specific_atoms=self.specific_atoms
         )
+        num_atoms = len(atoms)
         unique_atoms = dataset.unique()
         batch_size = len(dataset)
         dataloader = DataLoader(
@@ -155,19 +160,21 @@ class AMP(Calculator):
         model.eval()
 
         for inputs in dataloader:
+            if self.specific_atoms is True:
+                unique_atoms = inputs[2]
+                num_atoms = inputs[3][0]
             for element in unique_atoms:
                 inputs[0][element][0] = inputs[0][element][0].requires_grad_(True)
             energy, forces = model(inputs)
+            energy = energy*self.scale.std + self.scale.mean*num_atoms
+            forces = self.scale.denorm(forces, energy=False)
         energy = np.concatenate(energy.detach().numpy())
         forces = forces.detach().numpy()
-        num_atoms = forces.shape[0]
 
         image_hash = hash_images([atoms])
         if self.delta:
             self.delta_model.neighborlist.calculate_items(image_hash)
-            delta_energy, delta_forces, _ = self.delta_model.image_pred(
-                atoms, self.params
-            )
+            delta_energy, delta_forces, _ = self.delta_model.image_pred(atoms)
             delta_energy = np.squeeze(delta_energy)
             energy += delta_energy + num_atoms*(self.target_ref_per_atom - self.delta_ref_per_atom)
             forces += delta_forces

@@ -8,7 +8,7 @@ import numpy as np
 
 
 class MDsimulate:
-    def __init__(self, ensemble, dt, temp, count, initial_geometry=None):
+    def __init__(self, thermo_ensemble, dt, temp, count, initial_geometry=None):
         """
         Parameters
         ----------
@@ -17,12 +17,12 @@ class MDsimulate:
         temp: temperature (K)
         initial_slab: initial geometry to use, if None - will be generated
         """
-        self.ensemble = ensemble
+        self.ensemble = thermo_ensemble
         self.dt = dt
         self.temp = temp
         self.count = count
         if initial_geometry is None:
-            raise Exception('Initial structure not provided!')
+            raise Exception("Initial structure not provided!")
         else:
             self.starting_geometry = initial_geometry
 
@@ -60,11 +60,10 @@ class MDsimulate:
             dyn.attach(printenergy, interval=10)
         dyn.run(self.count)
 
-    def get_trajectory(self, filename, start_count, end_count, interval):
-        trajectory = ase.io.read(
-            filename + ".traj", "{}:{}:{}".format(start_count, end_count, interval)
-        )
+    def get_trajectory(self, filename):
+        trajectory = ase.io.read(filename + ".traj", ":")
         return trajectory
+
 
 class Relaxation:
     def __init__(self, initial_geometry, optimizer, fmax=0.05, steps=None):
@@ -76,13 +75,9 @@ class Relaxation:
     def run(self, calc, filename):
         structure = self.initial_geometry.copy()
         structure.set_calculator(calc)
-        dyn = self.optimizer(
-            structure, trajectory="{}.traj".format(filename)
-        )
+        dyn = self.optimizer(structure, trajectory="{}.traj".format(filename))
         dyn.run(fmax=self.fmax, steps=self.steps)
 
-    def get_trajectory(self, filename, start_count, end_count, interval):
-        trajectory = ase.io.read(
-            filename + ".traj", "{}:{}:{}".format(start_count, end_count, interval)
-        )
+    def get_trajectory(self, filename):
+        trajectory = ase.io.read(filename + ".traj", ":")
         return trajectory
