@@ -240,7 +240,7 @@ class Symmetry_function_customized(Symmetry_function):
     def Get_adsorbat_atoms(self, atoms):
         adsorbate_atoms = []  # the index of adsorbate atoms
         for index, atom in enumerate(atoms):
-            if atom.tag == 1:
+            if atom.tag != 0:
                 adsorbate_atoms.append(index)
         return adsorbate_atoms
 

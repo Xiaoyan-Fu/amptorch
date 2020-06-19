@@ -568,7 +568,6 @@ class TestDataset_seperate(TestDataset):
 
     def __init__(self, images, elements, unique_atoms, descriptor, Gs, fprange, label="example", cores=1,
                  save_fps=False, specific_atoms=False):
-        super().__init__(images, unique_atoms, descriptor, Gs, fprange, label, cores, save_fps, specific_atoms)
         self.images = images
         if type(images) is not list:
             self.images = [images]
