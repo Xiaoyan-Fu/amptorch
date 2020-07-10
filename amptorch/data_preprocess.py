@@ -211,9 +211,10 @@ class AtomsDataset(Dataset):
                                 t = np.append(t, k)
                                 break
                     rearange_forces[index] = t.astype(int)
-                    image_primes = self.descriptor.fingerprintprimes[hash_name]
+                    # image_primes = self.descriptor.fingerprintprimes[hash_name]
                     # scaling of fingerprint derivatives to be consistent with
                     # fingerprint scaling.
+                    '''
                     _image_primes = copy.copy(image_primes)
                     for _, key in enumerate(list(image_primes.keys())):
                         base_atom = key[3]
@@ -226,14 +227,17 @@ class AtomsDataset(Dataset):
 
                     image_prime_values = list(_image_primes.values())
                     image_prime_keys = list(_image_primes.keys())
+                    '''
                     fp_length = len(image_fingerprint[0][1])
                     num_atoms = len(image_fingerprint)
                     if self.specific_atoms:
                         ad_atom_index = get_ad_index(atoms_object)
                     total_atoms_num = len(atoms_object)
+                    '''
                     fingerprintprimes = torch.zeros(
                         fp_length * num_atoms, 3 * total_atoms_num
                     )
+                    
                     for idx, fp_key in enumerate(image_prime_keys):
                         image_prime = torch.tensor(image_prime_values[idx])
                         if self.specific_atoms:
@@ -253,7 +257,9 @@ class AtomsDataset(Dataset):
                             open("./stored-primes/" + hash_name, "wb"), sp_matrix
                         )
                     fprimes_dataset.append(fingerprintprimes)
+                    '''
                 forces_dataset.append(torch.from_numpy(image_forces))
+
         if self.delta:
             self.delta_energies /= num_of_atoms
             target_ref_per_atom = energy_dataset[0]
@@ -550,7 +556,7 @@ class TestDataset(Dataset):
         if descriptor == SNN_Gaussian:
             # create simple_nn fingerprints
             self.hashed_images = hash_images(self.atom_images, Gs=Gs)
-            self.fps, self.fp_primes = make_amp_descriptors_simple_nn(
+            self.fps = make_amp_descriptors_simple_nn(
                 self.atom_images,
                 Gs,
                 self.training_unique_atoms,
@@ -587,11 +593,11 @@ class TestDataset(Dataset):
     def __getitem__(self, index):
         if not self.save_fps:
             image_fingerprint = self.fps
-            image_primes = self.fp_primes
+            # image_primes = self.fp_primes
         else:
             hash_name = list(self.hashed_images.keys())[index]
             image_fingerprint = self.descriptor.fingerprints[hash_name]
-            image_primes = self.descriptor.fingerprintprimes[hash_name]
+            # image_primes = self.descriptor.fingerprintprimes[hash_name]
         fprange = self.fprange
         atom_order = []
         # fingerprint scaling to a range of [-1,1].
@@ -607,6 +613,7 @@ class TestDataset(Dataset):
             image_fingerprint[i] = (atom, _afp)
             atom_order.append(atom)
         # consistent fingerprint derivative scaling.
+        '''
         _image_primes = copy.copy(image_primes)
         for _, key in enumerate(list(image_primes.keys())):
             base_atom = key[3]
@@ -634,11 +641,13 @@ class TestDataset(Dataset):
 
         image_prime_values = list(_image_primes.values())
         image_prime_keys = list(_image_primes.keys())
+        '''
         fp_length = len(image_fingerprint[0][1])
         num_atoms = len(image_fingerprint)
         if self.specific_atoms is True:
             ad_atom_index = get_ad_index(self.images[index])
         total_atoms_num = len(self.images[index])
+        '''
         fingerprintprimes = torch.zeros(fp_length * num_atoms, 3 * total_atoms_num)
         for idx, fp_key in enumerate(image_prime_keys):
             image_prime = torch.tensor(image_prime_values[idx])
@@ -652,7 +661,9 @@ class TestDataset(Dataset):
                 base_atom * fp_length : base_atom * fp_length + fp_length,
                 wrt_atom * 3 + coord,
             ] = image_prime
-
+        '''
+        fingerprintprimes = None
+        rearange = None
         return [image_fingerprint, fingerprintprimes, num_atoms, rearange]
 
     def unique(self):
@@ -678,20 +689,23 @@ class TestDataset(Dataset):
         total_entries = 0
         previous_entries = 0
         atom_shift = 0
+        
         for image in training_data:
-            image[1] = image[1].to_sparse()  # presparify the fprimes
-            total_entries += len(image[1]._values())
+            # image[1] = image[1].to_sparse()  # presparify the fprimes
+            # total_entries += len(image[1]._values())
             num_of_atoms.append(image[2])
-            rearange_set = np.append(rearange_set, np.array(image[-1]) + atom_shift)
-            atom_shift += image[2]
+            # rearange_set = np.append(rearange_set, np.array(image[-1]) + atom_shift)
+            # atom_shift += image[2]
+        '''
         # Construct a sparse matrix with dimensions PQx3Q
         dim1_start = 0
         dim2_start = 0
         # pre-define matrices filled with zeros
         fprimes_inds = torch.zeros((2, total_entries), dtype=torch.int64)
         fprimes_vals = torch.zeros((total_entries))
-
+        '''
         for idx, image in enumerate(training_data):
+            '''
             fprime = image[1]
             dim1 = fprime.shape[0]
             dim2 = fprime.shape[1]
@@ -713,12 +727,14 @@ class TestDataset(Dataset):
 
             dim1_start += dim1
             dim2_start += dim2
+            '''
             image_fingerprint = image[0]
             fingerprint_dataset.append(image_fingerprint)
+        '''
         sparse_fprimes = torch.sparse.LongTensor(
             fprimes_inds, fprimes_vals, torch.Size([dim1_start, dim2_start])
         )
-
+        '''
         element_specific_fingerprints = {}
         model_input_data = []
         for element in self.unique_atoms:
@@ -739,6 +755,7 @@ class TestDataset(Dataset):
                     element_specific_fingerprints[element][0]
                 )
                 unique_atoms.append(element)
+        sparse_fprimes = torch.sparse.LongTensor()
         batch_size = len(num_of_atoms)
         model_input_data.append(element_specific_fingerprints)
         model_input_data.append(batch_size)

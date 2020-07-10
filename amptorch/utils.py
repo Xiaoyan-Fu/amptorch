@@ -321,38 +321,38 @@ def convert_simple_nn_fps(traj, Gs, specific_atoms, cores, label, save, delete_o
     fp_dir = "data"+label
     if len(traj) > 1:
         with Pool(cores) as p:
-            l_trajs = [image + (Gs, specific_atoms, label, fp_dir, False) for image in l_trajs]
+            l_trajs = [image + (Gs, specific_atoms, label, fp_dir) for image in l_trajs]
             p.map(reorganize, l_trajs)
     else:
-        image = (0, traj[0], Gs, specific_atoms, label, fp_dir, True)
-        fps, fp_primes = reorganize(image, save=save)
+        image = (0, traj[0], Gs, specific_atoms, label, fp_dir)
+        fps = reorganize(image, save=save)
     if delete_old:
         os.rmdir("./data"+label)
     if save:
         return None, None
     else:
-        return fps, fp_primes
+        return fps
 
 
 def reorganize(inp, delete_old=True, save=True):
-    i, image, Gs, specific_atoms, label, fp_dir, return_ = inp
+    i, image, Gs, specific_atoms, label, fp_dir = inp
     pic = pickle.load(open(fp_dir+"/data{}.pickle".format(i + 1), "rb"))
     im_hash = get_hash(image, Gs)
     x_list = reorganize_simple_nn_fp(image, specific_atoms, pic["x"])
-    x_der_dict = reorganize_simple_nn_derivative(image, specific_atoms, pic["dx"])
+    # x_der_dict = reorganize_simple_nn_derivative(image, specific_atoms, pic["dx"])
     if save:
         pickle.dump(x_list, open("./amp-data-fingerprints.ampdb/loose/" + im_hash, "wb"))
-        pickle.dump(
-            x_der_dict, open("./amp-data-fingerprint-primes.ampdb/loose/" + im_hash, "wb")
-        )
+        #pickle.dump(
+        #    x_der_dict, open("./amp-data-fingerprint-primes.ampdb/loose/" + im_hash, "wb")
+        # )
     if delete_old:  # in case disk space is an issue
         if os.path.exists(os.path.join("./data" + label,'simple_nn_log')):
             os.remove(os.path.join("./data" + label,'simple_nn_log'))
         os.remove(fp_dir+"/data{}.pickle".format(i + 1))
-    if return_:
-        return x_list, x_der_dict
+    if save:
+        return None, None
     else:
-        return 0,0
+        return x_list
 
 
 class DummySimple_nn(object):
@@ -477,9 +477,9 @@ def stored_fps(traj, Gs):
     image_hash = get_hash(traj[0], Gs)
     with open("amp-data-fingerprints.ampdb/loose/"+image_hash, "rb") as f:
         fps = load(f)
-    with open("amp-data-fingerprint-primes.ampdb/loose/"+image_hash, "rb") as f:
-        fp_primes = load(f)
-    return fps, fp_primes
+    #with open("amp-data-fingerprint-primes.ampdb/loose/"+image_hash, "rb") as f:
+    #    fp_primes = load(f)
+    return fps#, fp_primes
 
 def make_amp_descriptors_simple_nn(atoms, Gs, elements, cores, label, save=True, specific_atoms=False):
     """
@@ -490,12 +490,12 @@ def make_amp_descriptors_simple_nn(atoms, Gs, elements, cores, label, save=True,
     traj, calculated = make_simple_nn_fps(atoms, Gs, specific_atoms, elements=elements,
             label=label, clean_up_directory=True)
     if calculated:
-        fps, fp_primes = convert_simple_nn_fps(traj, Gs, specific_atoms, cores, label, save, delete_old=True)
-        return fps, fp_primes
+        fps = convert_simple_nn_fps(traj, Gs, specific_atoms, cores, label, save, delete_old=True)
+        return fps
     if save is False and calculated is False:
-        fps, fp_primes = stored_fps(atoms, Gs)
-        return fps, fp_primes
-    else: return None, None
+        fps = stored_fps(atoms, Gs)
+        return fps# , fp_primes
+    else: return None #, None
 
 
 class Logger:

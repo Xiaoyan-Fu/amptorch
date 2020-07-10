@@ -64,13 +64,13 @@ class BPNN(nn.Module):
     """
 
     def __init__(
-        self, unique_atoms, architecture, device, forcetraining,
+        self, unique_atoms, architecture, device, forcetraining=False,
         activation=Tanh, require_grd=True
     ):
         super(BPNN, self).__init__()
         self.device = device
         self.req_grad = require_grd
-        self.forcetraining = forcetraining
+        self.forcetraining = False
         self.architecture = architecture
         self.activation_fn = activation
 
@@ -124,6 +124,7 @@ class BPNN(nn.Module):
                     )[0]
                     dE_dFP = torch.cat((dE_dFP, gradients))
                     idx = torch.cat((idx, contribution_index.float()))
+            '''
             if self.forcetraining:
                 """Constructs a 1xPQ tensor that contains the derivatives with respect to
                 each atom's fingerprint"""
@@ -148,6 +149,7 @@ class BPNN(nn.Module):
                 predictions in the same order and shape as the target forces calculated
                 from AMP."""
                 force_pred = force_pred.reshape(-1, 3)
+            '''
         return energy_pred, force_pred
 
 class CustomMSELoss(nn.Module):

@@ -7,7 +7,9 @@ import six
 from six.moves import cPickle as pickle
 from ase import io
 from simple_nn.features.symmetry_function import Symmetry_function
-from simple_nn.features.symmetry_function._libsymf import lib, ffi
+#from simple_nn.features.symmetry_function._libsymf import lib, ffi
+from ..my_symmetry_function._libsymf import lib, ffi
+# from utils import reorganize_simple_nn_fp
 from simple_nn.utils import _gen_2Darray_for_ffi, compress_outcar, _generate_scale_file, \
     _make_full_featurelist, _make_data_list, _make_str_data_list, pickle_load
 from simple_nn.utils import graph as grp
@@ -150,7 +152,6 @@ class Symmetry_function_customized(Symmetry_function):
 
                 res = dict()
                 res['x'] = dict()
-                res['dx'] = dict()
                 res['params'] = dict()
                 res['N'] = type_num
                 res['tot_num'] = np.sum(list(type_num.values()))
@@ -179,15 +180,13 @@ class Symmetry_function_customized(Symmetry_function):
                     cal_atoms_p = ffi.cast("int *", cal_atoms.ctypes.data)
 
                     x = np.zeros([cal_num, params_set[jtem]['num']], dtype=np.float64, order='C')
-                    dx = np.zeros([cal_num, atom_num * params_set[jtem]['num'] * 3], dtype=np.float64, order='C')
 
                     x_p = _gen_2Darray_for_ffi(x, ffi)
-                    dx_p = _gen_2Darray_for_ffi(dx, ffi)
 
                     errno = lib.calculate_sf(cell_p, cart_p, scale_p, \
                                              atom_i_p, atom_num, cal_atoms_p, cal_num, \
                                              params_set[jtem]['ip'], params_set[jtem]['dp'], params_set[jtem]['num'], \
-                                             x_p, dx_p)
+                                             x_p)
                     comm.barrier()
                     if errno == 1:
                         err = "Not implemented symmetry function type."
@@ -202,16 +201,12 @@ class Symmetry_function_customized(Symmetry_function):
 
                     if cal_type_num[jtem] != 0:
                         res['x'][jtem] = np.array(comm.gather(x, root=0))
-                        res['dx'][jtem] = np.array(comm.gather(dx, root=0))
                         if comm.rank == 0:
                             res['x'][jtem] = np.concatenate(res['x'][jtem], axis=0).reshape(
                                 [cal_type_num[jtem], params_set[jtem]['num']])
-                            res['dx'][jtem] = np.concatenate(res['dx'][jtem], axis=0). \
-                                reshape([cal_type_num[jtem], params_set[jtem]['num'], atom_num, 3])
                             res['partition_' + jtem] = np.ones([cal_type_num[jtem]]).astype(np.int32)
                     else:
                         res['x'][jtem] = np.zeros([0, params_set[jtem]['num']])
-                        res['dx'][jtem] = np.zeros([0, params_set[jtem]['num'], atom_num, 3])
                         res['partition_' + jtem] = np.ones([0]).astype(np.int32)
                     res['params'][jtem] = params_set[jtem]['total']
 
