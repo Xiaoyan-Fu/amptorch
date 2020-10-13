@@ -135,17 +135,20 @@ class Gaussian(BaseDescriptor):
                         )
                     )
 
-    def calculate_fingerprints(self, atoms, element, calc_derivatives, log):
+    def calculate_fingerprints(self, atoms, element, cal_atoms,calc_derivatives, log):
         element_index = ATOM_SYMBOL_TO_INDEX_DICT[element]
-
         symbols = np.array(atoms.get_chemical_symbols())
         atom_num = len(symbols)
         atom_indices = list_symbols_to_indices(symbols)
         unique_atom_indices = np.unique(atom_indices)
-
         type_num = dict()
         type_idx = dict()
-
+        cal_index = []
+        for c_e in cal_atoms.keys():
+            cal_index.extend(cal_atoms[c_e])
+        cal_col_index = []
+        for index in cal_index:
+            cal_col_index.extend([index * 3, index * 3+1, index*3+2])
         for atom_index in unique_atom_indices:
             tmp = atom_indices == atom_index
             type_num[atom_index] = np.sum(tmp).astype(np.int64)
@@ -153,7 +156,6 @@ class Gaussian(BaseDescriptor):
             # indexs are sorted in this part.
             # if not, it could generate bug in training process for force training
             type_idx[atom_index] = np.arange(atom_num)[tmp]
-
         atom_indices_p = ffi.cast("int *", atom_indices.ctypes.data)
 
         cart = np.copy(atoms.get_positions(wrap=True), order="C")
@@ -165,13 +167,14 @@ class Gaussian(BaseDescriptor):
         scale_p = _gen_2Darray_for_ffi(scale, ffi)
         cell_p = _gen_2Darray_for_ffi(cell, ffi)
         pbc_p = ffi.cast("int *", pbc.ctypes.data)
-
-        cal_atoms = np.asarray(type_idx[element_index], dtype=np.intc, order="C")
-        cal_num = len(cal_atoms)
-        cal_atoms_p = ffi.cast("int *", cal_atoms.ctypes.data)
+        
+        # get cal_atoms -----find tagged atom
+        calc_atoms = np.asarray(cal_atoms[element], dtype=np.intc, order="C")
+        cal_num = len(calc_atoms)
+        cal_atoms_p = ffi.cast("int *", calc_atoms.ctypes.data)
 
         size_info = np.array([atom_num, cal_num, self.params_set[element_index]["num"]])
-
+        # print(cal_num, 'atoms:', cal_atoms)
         if calc_derivatives:
             x = np.zeros(
                 [cal_num, self.params_set[element_index]["num"]],
@@ -206,6 +209,7 @@ class Gaussian(BaseDescriptor):
                 raise NotImplementedError("Descriptor not implemented!")
             fp = np.array(x)
             fp_prime = np.array(dx)
+            fp_prime = fp_prime[:, cal_col_index]
             scipy_sparse_fp_prime = sparse.coo_matrix(fp_prime)
 
             return (
@@ -244,4 +248,24 @@ class Gaussian(BaseDescriptor):
                 raise NotImplementedError("Descriptor not implemented!")
             fp = np.array(x)
 
-            return size_info, fp, None, None, None, None
+            return size_info, fp,None, None, None, None
+
+        def Get_adsorbat_atoms(self, atoms):
+            adsorbate_atoms = []  # the index of adsorbate atoms
+            for index, atom in enumerate(atoms):
+                if atom.tag == 1:
+                    adsorbate_atoms.append(index)
+            return adsorbate_atoms
+        def Get_calc_type(self, ad_atoms, type_idx, atom_types):
+            cal_type_num = dict()
+            cal_type_idx = dict()
+            for j, jitem in enumerate(atom_types):
+                num = 0
+                idx = []
+                for idxi in type_idx[jitem]:
+                    if idxi in ad_atoms:
+                        num = num + 1
+                        idx.append(idxi)
+                cal_type_num[jitem] = num
+                cal_type_idx[jitem] = np.array(idx)
+            return cal_type_num, cal_type_idx

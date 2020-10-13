@@ -40,7 +40,9 @@ class AtomsToData:
     ):
         natoms = len(atoms)
         image_data = self.descriptor_data[idx]
-        atomic_numbers = torch.LongTensor(atoms.get_atomic_numbers())
+        #atomic_numbers = torch.LongTensor(atoms.get_atomic_numbers())
+        atomic_numbers = torch.LongTensor(image_data['atomic_numbers'])
+        natoms = len(atomic_numbers)
         image_idx = torch.full((1, natoms), idx, dtype=torch.int64).view(-1)
         image_fingerprint = torch.FloatTensor(image_data["descriptors"])
 
@@ -57,7 +59,11 @@ class AtomsToData:
             energy = atoms.get_potential_energy(apply_constraint=False)
             data.energy = energy
         if self.r_forces:
-            forces = torch.FloatTensor(atoms.get_forces(apply_constraint=False))
+            all_forces = atoms.get_forces(apply_constraint=False)
+            cal_forces = []
+            for index in image_data['cal_atom_index']:
+                cal_forces.append(all_forces[index])
+            forces = torch.FloatTensor(cal_forces)
             data.forces = forces
         if self.fprimes:
             fp_prime_val = image_data["descriptor_primes"]["val"]
