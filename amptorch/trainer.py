@@ -217,6 +217,7 @@ class AtomsTrainer:
         collate_fn = DataCollater(train=False, forcetraining=self.forcetraining)
 
         predictions = {"energy": [], "forces": []}
+        predictions["cal_atoms_index"] = []
         for data in data_list:
             collated = collate_fn([data])
             energy, forces = self.net.module(collated)
@@ -226,7 +227,7 @@ class AtomsTrainer:
 
             predictions["energy"].extend(energy)
             predictions["forces"].append(forces)
-
+            predictions["cal_atoms_index"].append(data.cal_atoms_idx) 
         return predictions
 
     def load_pretrained(self, checkpoint_path=None):

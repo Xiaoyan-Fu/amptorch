@@ -45,7 +45,7 @@ class AtomsToData:
         natoms = len(atomic_numbers)
         image_idx = torch.full((1, natoms), idx, dtype=torch.int64).view(-1)
         image_fingerprint = torch.FloatTensor(image_data["descriptors"])
-
+        cal_atom_index = torch.LongTensor(image_data['cal_atom_index'])
         # put the minimum data in torch geometric data object
         data = Data(
             fingerprint=image_fingerprint,
@@ -53,7 +53,7 @@ class AtomsToData:
             atomic_numbers=atomic_numbers,
             natoms=natoms,
         )
-
+        data.cal_atoms_idx=torch.tensor(image_data['cal_atom_index'],dtype=torch.long) # name should not be *index* ...
         # optionally include other properties
         if self.r_energy:
             energy = atoms.get_potential_energy(apply_constraint=False)
@@ -79,7 +79,6 @@ class AtomsToData:
             )
 
             data.fprimes = fp_primes
-
         return data
 
     def convert_all(
