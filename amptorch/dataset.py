@@ -3,6 +3,7 @@ from torch_geometric.data import Batch
 
 from amptorch.descriptor.Gaussian import Gaussian
 from amptorch.descriptor.MCSH import AtomisticMCSH
+from amptorch.descriptor.GaussianSpecific import GaussianSpecific
 from amptorch.preprocessing import (
     AtomsToData,
     FeatureScaler,
@@ -29,6 +30,8 @@ class AtomsDataset(Dataset):
             self.descriptor = Gaussian(Gs=fp_params, elements=elements, **cutoff_params)
         elif fp_scheme == "mcsh":
             self.descriptor = AtomisticMCSH(MCSHs=fp_params, elements=elements)
+        elif fp_scheme == "gaussianspecific":
+            self.descriptor = GaussianSpecific(Gs=fp_params, elements=elements, **cutoff_params)
         else:
             raise NotImplementedError
 

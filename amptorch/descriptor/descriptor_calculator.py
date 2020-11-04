@@ -13,10 +13,6 @@ class DescriptorCalculator:
         verbose=True,
         cores=1,
     ):
-        assert isinstance(
-            descriptor, BaseDescriptor
-        ), "Descriptor must be instance of BaseDescriptor!"
-
         self.images = images
         self.descriptor = descriptor
         self.calc_derivatives = calc_derivatives

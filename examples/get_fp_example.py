@@ -35,7 +35,7 @@ Gs = {
 elements = ["Cu", "C", "O"]
 dataset = AtomsDataset(
     images=images,
-    descriptor_setup=("gaussian", Gs, elements),
+    descriptor_setup=("gaussianspecific", Gs, elements),
     forcetraining=False,
     save_fps=True,
 )

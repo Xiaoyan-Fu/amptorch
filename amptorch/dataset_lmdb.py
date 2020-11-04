@@ -2,6 +2,7 @@ import lmdb
 import pickle
 from torch.utils.data import Dataset
 from amptorch.descriptor.Gaussian import Gaussian
+from amptorch.descriptor.GaussianSpecific import GaussianSpecific
 from amptorch.descriptor.MCSH import AtomisticMCSH
 
 
@@ -46,6 +47,8 @@ class AtomsLMDBDataset(Dataset):
             descriptor = Gaussian(Gs=fp_params, elements=elements, **cutoff_params)
         elif fp_scheme == "mcsh":
             descriptor = AtomisticMCSH(MCSHs=fp_params, elements=elements)
+        elif fp_scheme == "gaussianspecific":
+            descriptor = GaussianSpecific(Gs=fp_params, elements=elements, **cutoff_params)
         else:
             raise NotImplementedError
         return descriptor
