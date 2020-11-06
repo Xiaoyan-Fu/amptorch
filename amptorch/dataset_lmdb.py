@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 from amptorch.descriptor.Gaussian import Gaussian
 from amptorch.descriptor.GaussianSpecific import GaussianSpecific
 from amptorch.descriptor.MCSH import AtomisticMCSH
-
+import os
 
 class AtomsLMDBDataset(Dataset):
     def __init__(
@@ -12,15 +12,20 @@ class AtomsLMDBDataset(Dataset):
         db_path,
     ):
         self.db_path = db_path
-        env = self.connect_db(self.db_path)
-        self.keys = [f"{j}".encode("ascii") for j in range(env.stat()["entries"])]
+        self.configpath = os.path.join(self.db_path, 'config.lmdb')
+        env = self.connect_db(self.configpath)
+        self.length = pickle.loads(env.begin().get("length".encode("ascii")))
+        
+        self.datapathlist = [os.path.join(self.db_path, 'data' + str(idx) + '.lmdb') for idx in range(self.length)] 
+        # self.keys = [f"{j}".encode("ascii") for j in range(env.stat()["entries"])]
+        self.keys = [f"{j}".encode("ascii") for j in range(self.length)]
         self.feature_scaler = pickle.loads(
             env.begin().get("feature_scaler".encode("ascii"))
         )
         self.target_scaler = pickle.loads(
             env.begin().get("target_scaler".encode("ascii"))
         )
-        self.length = pickle.loads(env.begin().get("length".encode("ascii")))
+        
         self.elements = pickle.loads(env.begin().get("elements".encode("ascii")))
         self.descriptor = self.get_descriptor(
             pickle.loads(env.begin().get("descriptor_setup".encode("ascii")))
@@ -31,13 +36,10 @@ class AtomsLMDBDataset(Dataset):
         return self.length
 
     def __getitem__(self, idx):
-        env = self.connect_db(self.db_path)
+        env = self.connect_db(self.datapathlist[idx])
         data = env.begin().get(self.keys[idx])
         data_object = pickle.loads(data)
         env.close()
-
-        self.feature_scaler.norm([data_object])
-        self.target_scaler.norm([data_object])
 
         return data_object
 
@@ -53,7 +55,6 @@ class AtomsLMDBDataset(Dataset):
             raise NotImplementedError
         return descriptor
 
-    @property
     def input_dim(self):
         return self[0].fingerprint.shape[1]
 
@@ -64,6 +65,6 @@ class AtomsLMDBDataset(Dataset):
             readonly=True,
             lock=False,
             readahead=False,
-            map_size=1099511627776 * 2,
+            map_size=1073741824 * 1,
         )
         return env

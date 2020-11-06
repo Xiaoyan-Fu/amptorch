@@ -1,6 +1,5 @@
 import torch
 
-
 class FeatureScaler:
     """
     Normalizes an input tensor and later reverts it.

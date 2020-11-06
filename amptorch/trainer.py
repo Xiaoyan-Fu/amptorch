@@ -121,7 +121,7 @@ class AtomsTrainer:
             normalizers = {"target": self.target_scaler, "feature": self.feature_scaler}
             torch.save(normalizers, os.path.join(self.cp_dir, "normalizers.pt"))
 
-        self.input_dim = self.train_dataset.input_dim
+        self.input_dim = self.train_dataset.input_dim()
         self.val_split = self.config["dataset"].get("val_split", 0)
         print("Loading dataset: {} images".format(len(self.train_dataset)))
 
