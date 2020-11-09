@@ -9,24 +9,20 @@ from amptorch.descriptor.GaussianSpecific import GaussianSpecific
 import random
 
 
-def construct_lmdb(data_dir, elements, Gs, lmdb_path="./datalmdb"):
+def construct_lmdb(paths, elements, Gs, lmdb_path="./data.lmdb"):
     
     """
     data_dir: Directory containing traj files to construct dataset from
     lmdb_path: Path to store LMDB dataset
     """
-    lmdb_path = lmdb_path.strip()
-    if not os.path.exists(lmdb_path):
-        os.makedirs(lmdb_path)
-    configdb = lmdb.open(
-        os.path.join(lmdb_path,'config.lmdb'),
-        map_size=1073741824 * 1,
+    db = lmdb.open(
+        lmdb_path,
+        map_size=1099511627776 * 2,
         subdir=False,
         meminit=False,
         map_async=True,
     )
 
-    paths = glob.glob(os.path.join(data_dir, "*.traj"))
     # Define symmetry functions
 
     descriptor = GaussianSpecific(Gs=Gs, elements=elements, cutoff_func="Cosine")
@@ -49,14 +45,6 @@ def construct_lmdb(data_dir, elements, Gs, lmdb_path="./datalmdb"):
         images = ase.io.read(path, ":")
         for image in images:
             do = a2d.convert(image, idx=idx)
-            dbname = 'data' + str(idx) + '.lmdb'
-            db = lmdb.open(
-                os.path.join(lmdb_path,dbname),
-                map_size=1073741824 * 1,
-                subdir=False,
-                meminit=False,
-                map_async=True,
-                )
             txn = db.begin(write=True)
             txn.put(f"{idx}".encode("ascii"), pickle.dumps(do, protocol=-1))
             txn.commit()
@@ -70,17 +58,13 @@ def construct_lmdb(data_dir, elements, Gs, lmdb_path="./datalmdb"):
             if random.randint(0, 100) < 30 and len(data_list) < 20000:
                 data_list.append(do)
             idx += 1
-            db.sync()
-            db.close()
 
-    db = configdb
-    
-    feature_scaler = FeatureScaler(data_list, forcetraining, scaling)
+    feature_scaler = NoFeatureScaler(data_list, forcetraining, scaling)
     txn = db.begin(write=True)
     txn.put("feature_scaler".encode("ascii"), pickle.dumps(feature_scaler, protocol=-1))
     txn.commit()
 
-    target_scaler = TargetScaler(data_list, forcetraining)
+    target_scaler = NoTargetScaler(data_list, forcetraining)
     txn = db.begin(write=True)
     txn.put("target_scaler".encode("ascii"), pickle.dumps(target_scaler, protocol=-1))
     txn.commit()
@@ -101,22 +85,17 @@ def construct_lmdb(data_dir, elements, Gs, lmdb_path="./datalmdb"):
 
     db.sync()
     db.close()
-    # norm fp and target, save in db
-    for i in tqdm(range(idx), desc="Norm fp and target"):
-        pathi = os.path.join(lmdb_path, 'data' + str(i) + '.lmdb') 
-        env = lmdb.open(
-            pathi,
-            subdir=False,
-            lock=False,
-            readahead=False,
-            map_size=1073741824 * 1,
-        )
-        txn = env.begin(write=True)
-        data = txn.get(f"{i}".encode("ascii"))
-        data_object = pickle.loads(data)
-        feature_scaler.norm([data_object])
-        target_scaler.norm([data_object])
-        txn.put(f"{i}".encode("ascii"), pickle.dumps(data_object, protocol=-1))
-        txn.commit()
-        env.sync()
-        env.close()
+
+class NoFeatureScaler:
+    def __init__(self, datalist, forcetraining, scaling):
+        self.forcetraining = forcetraining
+    def norm(self, data_list, threshold=1e-6):
+        return data_list
+
+class NoTargetScaler:
+    def __init__(self, data_list, forcetraining):
+        self.forcetraining = forcetraining
+    def norm(self, data_list):
+        return data_list
+    def denorm(self, tensor, pred="energy"):
+        return tensor

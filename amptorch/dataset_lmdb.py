@@ -12,11 +12,10 @@ class AtomsLMDBDataset(Dataset):
         db_path,
     ):
         self.db_path = db_path
-        self.configpath = os.path.join(self.db_path, 'config.lmdb')
-        env = self.connect_db(self.configpath)
+        env = self.connect_db(self.db_path)
         self.length = pickle.loads(env.begin().get("length".encode("ascii")))
         
-        self.datapathlist = [os.path.join(self.db_path, 'data' + str(idx) + '.lmdb') for idx in range(self.length)] 
+        # self.datapathlist = [os.path.join(self.db_path, 'data' + str(idx) + '.lmdb') for idx in range(self.length)] 
         # self.keys = [f"{j}".encode("ascii") for j in range(env.stat()["entries"])]
         self.keys = [f"{j}".encode("ascii") for j in range(self.length)]
         self.feature_scaler = pickle.loads(
@@ -30,16 +29,16 @@ class AtomsLMDBDataset(Dataset):
         self.descriptor = self.get_descriptor(
             pickle.loads(env.begin().get("descriptor_setup".encode("ascii")))
         )
-        env.close()
+        self.env = env
+        # env.close()
 
     def __len__(self):
         return self.length
 
     def __getitem__(self, idx):
-        env = self.connect_db(self.datapathlist[idx])
+        env = self.env
         data = env.begin().get(self.keys[idx])
         data_object = pickle.loads(data)
-        env.close()
 
         return data_object
 
@@ -65,6 +64,6 @@ class AtomsLMDBDataset(Dataset):
             readonly=True,
             lock=False,
             readahead=False,
-            map_size=1073741824 * 1,
+            map_size=1099511627776 * 2,
         )
         return env
