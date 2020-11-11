@@ -23,14 +23,14 @@ ffibuilder.cdef(
                             double**, double);"""
 )
 ffibuilder.set_source(
-    "amptorch.descriptor.Gaussian._libsymf",
+    "amptorch.descriptor.GaussianSpecific._libsymf",
     '#include "calculate_sf.h"',
     sources=[
-        "amptorch/descriptor/Gaussian/calculate_sf.cpp",
-        "amptorch/descriptor/Gaussian/symmetry_functions.cpp",
+        "amptorch/descriptor/GaussianSpecific/calculate_sf.cpp",
+        "amptorch/descriptor/GaussianSpecific/symmetry_functions.cpp",
     ],
     source_extension=".cpp",
-    include_dirs=["amptorch/descriptor/Gaussian/"],
+    include_dirs=["amptorch/descriptor/GaussianSpecific/"],
 )
 
 if __name__ == "__main__":
