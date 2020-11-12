@@ -16,11 +16,12 @@ def construct_lmdb(paths, elements, Gs, lmdb_path="./datalmdb"):
     lmdb_path: Path to store LMDB dataset
     """
     lmdb_path = lmdb_path.strip()
+    mapsize = 1048576 * 2
     if not os.path.exists(lmdb_path):
         os.makedirs(lmdb_path)
     configdb = lmdb.open(
         os.path.join(lmdb_path,'config.lmdb'),
-        map_size=1073741824 * 1,
+        map_size=mapsize,
         subdir=False,
         meminit=False,
         map_async=True,
@@ -44,7 +45,6 @@ def construct_lmdb(paths, elements, Gs, lmdb_path="./datalmdb"):
 
     data_list = []
     idx = 0
-    print(paths)
     for path in tqdm(paths, desc="calc FP"):
         images = ase.io.read(path, ":")
         for image in images:
@@ -52,7 +52,7 @@ def construct_lmdb(paths, elements, Gs, lmdb_path="./datalmdb"):
             dbname = 'data' + str(idx) + '.lmdb'
             db = lmdb.open(
                 os.path.join(lmdb_path,dbname),
-                map_size=1073741824 * 1,
+                map_size=mapsize,
                 subdir=False,
                 meminit=False,
                 map_async=True,
@@ -109,7 +109,7 @@ def construct_lmdb(paths, elements, Gs, lmdb_path="./datalmdb"):
             subdir=False,
             lock=False,
             readahead=False,
-            map_size=1073741824 * 1,
+            map_size=mapsize,
         )
         txn = env.begin(write=True)
         data = txn.get(f"{i}".encode("ascii"))

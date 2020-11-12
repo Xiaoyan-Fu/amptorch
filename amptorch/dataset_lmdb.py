@@ -59,12 +59,13 @@ class AtomsLMDBDataset(Dataset):
         return self[0].fingerprint.shape[1]
 
     def connect_db(self, lmdb_path):
+        mapsize = 1048576 * 2
         env = lmdb.open(
             lmdb_path,
             subdir=False,
             readonly=True,
             lock=False,
             readahead=False,
-            map_size=1073741824 * 1,
+            map_size=mapsize,
         )
         return env
