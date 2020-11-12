@@ -9,7 +9,7 @@ from amptorch.descriptor.GaussianSpecific import GaussianSpecific
 import random
 
 
-def construct_lmdb(data_dir, elements, Gs, lmdb_path="./datalmdb"):
+def construct_lmdb(paths, elements, Gs, lmdb_path="./datalmdb"):
     
     """
     data_dir: Directory containing traj files to construct dataset from
@@ -26,7 +26,7 @@ def construct_lmdb(data_dir, elements, Gs, lmdb_path="./datalmdb"):
         map_async=True,
     )
 
-    paths = glob.glob(os.path.join(data_dir, "*.traj"))
+    # paths = glob.glob(os.path.join(data_dir, "*.traj"))
     # Define symmetry functions
 
     descriptor = GaussianSpecific(Gs=Gs, elements=elements, cutoff_func="Cosine")
