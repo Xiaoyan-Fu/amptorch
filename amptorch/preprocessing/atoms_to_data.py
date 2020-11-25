@@ -53,7 +53,7 @@ class AtomsToData:
         atomic_numbers = torch.LongTensor(image_data['atomic_numbers'])
         natoms = len(atomic_numbers)
         image_idx = torch.full((1, natoms), idx, dtype=torch.int64).view(-1)
-        image_fingerprint = torch.FloatTensor(image_data["descriptors"])
+        image_fingerprint = torch.tensor(image_data["descriptors"], dtype=torch.get_default_dtype())
 
         cal_atom_index = torch.LongTensor(image_data['cal_atom_index'])
         # put the minimum data in torch geometric data object
@@ -73,7 +73,7 @@ class AtomsToData:
             cal_forces = []
             for index in image_data['cal_atom_index']:
                 cal_forces.append(all_forces[index])
-            forces = torch.FloatTensor(cal_forces)
+            forces = torch.tensor(cal_forces, dtype=torch.get_default_dtype())
             data.forces = forces
         if self.fprimes:
             fp_prime_val = image_data["descriptor_primes"]["val"]
@@ -83,7 +83,7 @@ class AtomsToData:
 
             indices = np.vstack((fp_prime_row, fp_prime_col))
             torch_indices = torch.LongTensor(indices)
-            torch_values = torch.FloatTensor(fp_prime_val)
+            torch_values = torch.tensor(fp_prime_val, dtype=torch.get_default_dtype())
             fp_primes = torch.sparse.FloatTensor(
                 torch_indices, torch_values, torch.Size(fp_prime_size)
             )
