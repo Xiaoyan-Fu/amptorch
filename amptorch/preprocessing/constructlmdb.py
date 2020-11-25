@@ -7,9 +7,10 @@ from tqdm import tqdm
 from amptorch.preprocessing import AtomsToData, FeatureScaler, TargetScaler
 from amptorch.descriptor.GaussianSpecific import GaussianSpecific
 import random
+import torch
 
 
-def construct_lmdb(paths, elements, Gs, lmdb_path="./data.lmdb"):
+def construct_lmdb(paths, elements, Gs, lmdb_path="./data.lmdb", config = {}):
     
     """
     data_dir: Directory containing traj files to construct dataset from
@@ -30,6 +31,8 @@ def construct_lmdb(paths, elements, Gs, lmdb_path="./data.lmdb"):
     scaling = {"type": "normalize", "range": (0, 1)}
     forcetraining = True
 
+    dtype = config["cmd"].get("dtype", torch.FloatTensor)
+    torch.set_default_tensor_type(dtype)
     a2d = AtomsToData(
         descriptor=descriptor,
         r_energy=True,
