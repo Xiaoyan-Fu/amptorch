@@ -1,6 +1,6 @@
 from torch.utils.data import Dataset
 from torch_geometric.data import Batch
-
+import torch
 from amptorch.descriptor.Gaussian import Gaussian
 from amptorch.descriptor.MCSH import AtomisticMCSH
 from amptorch.descriptor.GaussianSpecific import GaussianSpecific
@@ -81,11 +81,11 @@ class DataCollater:
             batch = Batch.from_data_list(data_list)
             for i, data in enumerate(data_list):
                 data.fprimes = mtxs[i]
-            block_matrix = sparse_block_diag(mtxs)
+            # block_matrix = sparse_block_diag(mtxs)
+            block_matrix = torch.block_diag(*mtxs)
             batch.fprimes = block_matrix
         else:
             batch = Batch.from_data_list(data_list)
-
         if self.train:
             if self.forcetraining:
                 return batch, [batch.energy, batch.forces]

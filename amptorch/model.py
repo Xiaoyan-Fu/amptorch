@@ -113,7 +113,7 @@ class BPNN(nn.Module):
                     create_graph=True,
                 )[0].view(1, -1)
 
-                forces = -1 * torch.sparse.mm(batch.fprimes.t(), gradients.t()).view(
+                forces = -1 * torch.mm(batch.fprimes.t(), gradients.t()).view(
                     -1, 3
                 )
 

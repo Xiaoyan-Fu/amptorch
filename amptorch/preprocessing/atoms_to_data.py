@@ -86,7 +86,7 @@ class AtomsToData:
             torch_values = torch.tensor(fp_prime_val, dtype=torch.get_default_dtype())
             fp_primes = torch.sparse.FloatTensor(
                 torch_indices, torch_values, torch.Size(fp_prime_size)
-            )
+            ).to_dense()
 
             data.fprimes = fp_primes
 
