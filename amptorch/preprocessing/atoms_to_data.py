@@ -5,7 +5,7 @@ import torch
 from torch_geometric.data import Data
 
 from amptorch.descriptor.descriptor_calculator import DescriptorCalculator
-
+from amptorch.descriptor.GaussianSpecific import GaussianSpecific
 try:
     shell = get_ipython().__class__.__name__
     if shell == "ZMQInteractiveShell":
@@ -55,7 +55,6 @@ class AtomsToData:
         image_idx = torch.full((1, natoms), idx, dtype=torch.int64).view(-1)
         image_fingerprint = torch.tensor(image_data["descriptors"], dtype=torch.get_default_dtype())
 
-        cal_atom_index = torch.LongTensor(image_data['cal_atom_index'])
         # put the minimum data in torch geometric data object
         data = Data(
             fingerprint=image_fingerprint,
@@ -63,7 +62,11 @@ class AtomsToData:
             atomic_numbers=atomic_numbers,
             natoms=natoms,
         )
-        data.cal_atoms_idx=torch.tensor(image_data['cal_atom_index'],dtype=torch.long) # name should not be *index* ...
+        
+        if not isinstance(self.descriptor, GaussianSpecific):
+            data.cal_atoms_idx = torch.tensor([i for i in range(natoms)],dtype=torch.long)
+        else: 
+            data.cal_atoms_idx=torch.tensor(image_data['cal_atom_index'],dtype=torch.long) # name should not be *index* ...
         # optionally include other properties
         if self.r_energy:
             energy = atoms.get_potential_energy(apply_constraint=False)

@@ -45,7 +45,7 @@ class AtomsTrainer:
         self.timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         self.identifier = self.config["cmd"].get("identifier", False)
         if self.identifier:
-            self.identifier = self.timestamp + "-{}".format(self.identifier)
+            self.identifier = "{}-".format(self.identifier) + self.timestamp
         else:
             self.identifier = self.timestamp
 
