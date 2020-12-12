@@ -5,7 +5,7 @@ import torch
 from torch_geometric.data import Data
 
 from amptorch.descriptor.descriptor_calculator import DescriptorCalculator
-
+from amptorch.descriptor.GaussianSpecific import GaussianSpecific
 try:
     shell = get_ipython().__class__.__name__
     if shell == "ZMQInteractiveShell":
@@ -54,8 +54,7 @@ class AtomsToData:
         natoms = len(atomic_numbers)
         image_idx = torch.full((1, natoms), idx, dtype=torch.int64).view(-1)
         image_fingerprint = torch.tensor(image_data["descriptors"], dtype=torch.get_default_dtype())
-
-        cal_atom_index = torch.LongTensor(image_data['cal_atom_index'])
+        
         # put the minimum data in torch geometric data object
         data = Data(
             fingerprint=image_fingerprint,
@@ -63,7 +62,10 @@ class AtomsToData:
             atomic_numbers=atomic_numbers,
             natoms=natoms,
         )
-        data.cal_atoms_idx=torch.tensor(image_data['cal_atom_index'],dtype=torch.long) # name should not be *index* ...
+        if not isinstance(self.descriptor, GaussianSpecific):
+            data.cal_atoms_idx = torch.tensor([i for i in range(natoms)],dtype=torch.long)
+        else: 
+            data.cal_atoms_idx=torch.tensor(image_data['cal_atom_index'],dtype=torch.long) # name should not be *index* ...
         # optionally include other properties
         if self.r_energy:
             energy = atoms.get_potential_energy(apply_constraint=False)
@@ -71,24 +73,13 @@ class AtomsToData:
         if self.r_forces:
             all_forces = atoms.get_forces(apply_constraint=False)
             cal_forces = []
-            for index in image_data['cal_atom_index']:
+            for index in data.cal_atoms_idx:
                 cal_forces.append(all_forces[index])
             forces = torch.tensor(cal_forces, dtype=torch.get_default_dtype())
             data.forces = forces
         if self.fprimes:
-            fp_prime_val = image_data["descriptor_primes"]["val"]
-            fp_prime_row = image_data["descriptor_primes"]["row"]
-            fp_prime_col = image_data["descriptor_primes"]["col"]
-            fp_prime_size = image_data["descriptor_primes"]["size"]
-
-            indices = np.vstack((fp_prime_row, fp_prime_col))
-            torch_indices = torch.LongTensor(indices)
-            torch_values = torch.tensor(fp_prime_val, dtype=torch.get_default_dtype())
-            fp_primes = torch.sparse.FloatTensor(
-                torch_indices, torch_values, torch.Size(fp_prime_size)
-            ).to_dense()
-
-            data.fprimes = fp_primes
+            fp_prime = torch.tensor(image_data["descriptor_primes"], dtype=torch.get_default_dtype())
+            data.fprimes = fp_prime
 
         return data
 

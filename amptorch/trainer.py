@@ -45,7 +45,7 @@ class AtomsTrainer:
         self.timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         self.identifier = self.config["cmd"].get("identifier", False)
         if self.identifier:
-            self.identifier = self.timestamp + "-{}".format(self.identifier)
+            self.identifier = "{}-".format(self.identifier) + self.timestamp
         else:
             self.identifier = self.timestamp
 
@@ -210,6 +210,7 @@ class AtomsTrainer:
             iterator_train__pin_memory=True,
             iterator_valid__collate_fn=self.parallel_collater,
             iterator_valid__shuffle=False,
+            iterator_train__num_workers=self.config["optim"].get("num_workers", 1),
             iterator_valid__pin_memory=True,
             device=self.device,
             train_split=self.split,

@@ -239,15 +239,11 @@ class Gaussian(BaseDescriptor):
                 raise NotImplementedError("Descriptor not implemented!")
             fp = np.array(x)
             fp_prime = np.array(dx)
-            scipy_sparse_fp_prime = sparse.coo_matrix(fp_prime)
 
             return (
                 size_info,
                 fp,
-                scipy_sparse_fp_prime.data,
-                scipy_sparse_fp_prime.row,
-                scipy_sparse_fp_prime.col,
-                np.array(fp_prime.shape),
+                fp_prime
             )
 
         else:
@@ -296,4 +292,4 @@ class Gaussian(BaseDescriptor):
                 raise NotImplementedError("Descriptor not implemented!")
             fp = np.array(x)
 
-            return size_info, fp, None, None, None, None
+            return size_info, fp, None

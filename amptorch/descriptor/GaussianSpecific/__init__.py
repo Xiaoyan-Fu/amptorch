@@ -251,15 +251,11 @@ class GaussianSpecific():
             fp = np.array(x)
             fp_prime = np.array(dx)
             fp_prime = fp_prime[:, cal_col_index]
-            scipy_sparse_fp_prime = sparse.coo_matrix(fp_prime)
 
             return (
                 size_info,
                 fp,
-                scipy_sparse_fp_prime.data,
-                scipy_sparse_fp_prime.row,
-                scipy_sparse_fp_prime.col,
-                np.array(fp_prime.shape),
+                fp_prime
             )
 
         else:
@@ -308,7 +304,7 @@ class GaussianSpecific():
                 raise NotImplementedError("Descriptor not implemented!")
             fp = np.array(x)
 
-            return size_info, fp, None, None, None, None
+            return size_info, fp, None
         
     def prepare_fingerprints(
         self, images, calc_derivatives, save_fps, verbose, cores, log
@@ -376,11 +372,7 @@ class GaussianSpecific():
             num_desc_dict = {}
             fp_dict = {}
 
-            fp_prime_val_dict = {}
-            fp_prime_row_dict = {}
-            fp_prime_col_dict = {}
-            fp_prime_size_dict = {}
-            
+            fp_primes_dict = {}     
             cal_atoms = {}
             for element in self.elements:
                 index_arr = np.arange(num_atoms)[symbol_arr == element]
@@ -405,17 +397,8 @@ class GaussianSpecific():
                         try:
                             size_info = np.array(current_element_grp["size_info"])
                             fps = np.array(current_element_grp["fps"])
-                            fp_primes_val = np.array(
-                                current_element_grp["fp_primes_val"]
-                            )
-                            fp_primes_row = np.array(
-                                current_element_grp["fp_primes_row"]
-                            )
-                            fp_primes_col = np.array(
-                                current_element_grp["fp_primes_col"]
-                            )
-                            fp_primes_size = np.array(
-                                current_element_grp["fp_primes_size"]
+                            fp_primes = np.array(
+                                current_element_grp["fp_primes"]
                             )
                             cal_atoms[element] = np.array(
                                 current_element_grp["cal_atoms"]
@@ -424,10 +407,7 @@ class GaussianSpecific():
                             (
                                 size_info,
                                 fps,
-                                fp_primes_val,
-                                fp_primes_row,
-                                fp_primes_col,
-                                fp_primes_size,
+                                fp_primes,
                             ) = self.calculate_fingerprints(
                                 image,
                                 element,
@@ -442,36 +422,22 @@ class GaussianSpecific():
                                 )
                                 current_element_grp.create_dataset("fps", data=fps)
                                 current_element_grp.create_dataset(
-                                    "fp_primes_val", data=fp_primes_val
-                                )
-                                current_element_grp.create_dataset(
-                                    "fp_primes_row", data=fp_primes_row
-                                )
-                                current_element_grp.create_dataset(
-                                    "fp_primes_col", data=fp_primes_col
-                                )
-                                current_element_grp.create_dataset(
-                                    "fp_primes_size", data=fp_primes_size
+                                    "fp_primes", data=fp_primes
                                 )
                                 current_element_grp.create_dataset(
                                     "cal_atoms", data=cal_atoms[element]
                                 )                                
 
+                        fp_dict[element] = fps
                         num_desc_list.append(size_info[2])
                         num_desc_dict[element] = size_info[2]
-                        fp_dict[element] = fps
-
-                        fp_prime_val_dict[element] = fp_primes_val
-                        fp_prime_row_dict[element] = fp_primes_row
-                        fp_prime_col_dict[element] = fp_primes_col
-                        fp_prime_size_dict[element] = fp_primes_size
-
+                        fp_primes_dict[element] = fp_primes
                     else:
                         try:
                             size_info = np.array(current_element_grp["size_info"])
                             fps = np.array(current_element_grp["fps"])
                         except Exception:
-                            size_info, fps, cal_atoms[element],_, _, _, _ = self.calculate_fingerprints(
+                            size_info, fps,_, = self.calculate_fingerprints(
                                 image,
                                 element,
                                 calc_derivatives=calc_derivatives,
@@ -496,7 +462,6 @@ class GaussianSpecific():
                     # print("element not in current image: {}".format(element))
 
             num_desc_max = np.max(num_desc_list)
-            
             num_atoms = 0
             for element in self.elements:
                 num_atoms += len(cal_atoms[element])
@@ -521,34 +486,14 @@ class GaussianSpecific():
             image_dict["atomic_numbers"] = list_symbols_to_indices(cal_atomic_numbers)
             image_dict["cal_atom_index"] = cal_atom_index
             if calc_derivatives:
-                descriptor_prime_dict = {}
-                descriptor_prime_dict["size"] = np.array(
-                    [num_desc_max * num_atoms, 3 * num_atoms]
-                )
-                descriptor_prime_row_list = []
-                descriptor_prime_col_list = []
-                descriptor_prime_val_list = []
-                cal_index_arr = {}
-                number = 0
+                image_fp_prime_array = np.zeros((num_atoms * num_desc_max, 3 * num_atoms))
+                line = 0
                 for element in fp_dict.keys():
-                    cal_index_arr[element] = np.arange(number, number+len(cal_atoms[element]))
-                    number += len(cal_atoms[element])
-                for element in fp_prime_val_dict.keys():
-                    descriptor_prime_row_list.append(
-                        self._fp_prime_element_row_index_to_image_row_index(
-                            fp_prime_row_dict[element],
-                            cal_index_arr[element],
-                            num_desc_dict[element],
-                            num_desc_max,
-                        )
-                    )
-                    descriptor_prime_col_list.append(fp_prime_col_dict[element])
-                    descriptor_prime_val_list.append(fp_prime_val_dict[element])
-                descriptor_prime_dict["row"] = np.concatenate(descriptor_prime_row_list)
-                descriptor_prime_dict["col"] = np.concatenate(descriptor_prime_col_list)
-                descriptor_prime_dict["val"] = np.concatenate(descriptor_prime_val_list)
-                image_dict["descriptor_primes"] = descriptor_prime_dict
-
+                    if len(cal_atoms[element]) > 0:
+                        image_fp_prime_array[
+                            np.arange(line,line + num_desc_max * len(cal_atoms[element])), : ] = fp_primes_dict[element]
+                    line += num_desc_max * len(cal_atoms[element]) 
+                image_dict["descriptor_primes"] = image_fp_prime_array
             descriptor_list.append(image_dict)
 
         return descriptor_list
@@ -569,11 +514,7 @@ class GaussianSpecific():
         index_arr_dict = {}
         num_desc_dict = {}
         fp_dict = {}
-
-        fp_prime_val_dict = {}
-        fp_prime_row_dict = {}
-        fp_prime_col_dict = {}
-        fp_prime_size_dict = {}
+        fp_primes_dict = {}
 
         cal_atoms = {}
         for element in self.elements:
@@ -583,8 +524,7 @@ class GaussianSpecific():
             cal_atoms[element] = []
             for index in index_arr_dict[element]:
                 if image[index].tag == 1:
-                    cal_atoms[element].append(index)
-                        
+                    cal_atoms[element].append(index)             
         for element in self.elements:
             if element in image.get_chemical_symbols():
                 index_arr = np.arange(num_atoms)[symbol_arr == element]
@@ -594,10 +534,7 @@ class GaussianSpecific():
                     (
                         size_info,
                         fps,
-                        fp_primes_val,
-                        fp_primes_row,
-                        fp_primes_col,
-                        fp_primes_size,
+                        fp_primes,
                     ) = self.calculate_fingerprints(
                         image,
                         element,
@@ -609,18 +546,11 @@ class GaussianSpecific():
                     num_desc_list.append(size_info[2])
                     num_desc_dict[element] = size_info[2]
                     fp_dict[element] = fps
-
-                    fp_prime_val_dict[element] = fp_primes_val
-                    fp_prime_row_dict[element] = fp_primes_row
-                    fp_prime_col_dict[element] = fp_primes_col
-                    fp_prime_size_dict[element] = fp_primes_size
-
+                    fp_primes_dict[element] = fp_primes
                 else:
-
-                    size_info, fps, cal_atoms[element],_, _, _, _ = self.calculate_fingerprints(
+                    size_info, fps,_ = self.calculate_fingerprints(
                         image, element, calc_derivatives=calc_derivatives, log=log
                     )
-
                     num_desc_list.append(size_info[2])
                     num_desc_dict[element] = size_info[2]
                     fp_dict[element] = fps
@@ -640,9 +570,7 @@ class GaussianSpecific():
         cal_atom_index = []
         for element in fp_dict.keys():
             if len(cal_atoms[element]) > 0:
-                image_fp_array[
-                    np.arange(line,line + len(cal_atoms[element])), : num_desc_dict[element]
-                ] = fp_dict[element]
+                image_fp_array[np.arange(line,line + len(cal_atoms[element])), : num_desc_dict[element]] = fp_dict[element]
                 cal_atomic_numbers.extend([element for i in range(len(cal_atoms[element]))])
                 cal_atom_index.extend(cal_atoms[element])
             line += len(cal_atoms[element])
@@ -650,52 +578,18 @@ class GaussianSpecific():
         image_dict["num_descriptors"] = num_desc_dict
         image_dict["atomic_numbers"] = list_symbols_to_indices(cal_atomic_numbers)
         image_dict["cal_atom_index"] = cal_atom_index
-            
+
         if calc_derivatives:
-            descriptor_prime_dict = {}
-            descriptor_prime_dict["size"] = np.array(
-                [num_desc_max * num_atoms, 3 * num_atoms]
-            )
-            descriptor_prime_row_list = []
-            descriptor_prime_col_list = []
-            descriptor_prime_val_list = []
-            
-            cal_index_arr = {}
-            number = 0
+            image_fp_prime_array = np.zeros((num_atoms * num_desc_max, 3 * num_atoms))
+            line = 0
             for element in fp_dict.keys():
-                cal_index_arr[element] = np.arange(number, number+len(cal_atoms[element]))
-                number += len(cal_atoms[element])
-
-            for element in fp_prime_val_dict.keys():
-                descriptor_prime_row_list.append(
-                    self._fp_prime_element_row_index_to_image_row_index(
-                        fp_prime_row_dict[element],
-                        cal_index_arr[element],
-                        num_desc_dict[element],
-                        num_desc_max,
-                    )
-                )
-                descriptor_prime_col_list.append(fp_prime_col_dict[element])
-                descriptor_prime_val_list.append(fp_prime_val_dict[element])
-            descriptor_prime_dict["row"] = np.concatenate(descriptor_prime_row_list)
-            descriptor_prime_dict["col"] = np.concatenate(descriptor_prime_col_list)
-            descriptor_prime_dict["val"] = np.concatenate(descriptor_prime_val_list)
-            image_dict["descriptor_primes"] = descriptor_prime_dict
-
+                if len(cal_atoms[element]) > 0:
+                    image_fp_prime_array[
+                        np.arange(line,line + num_desc_max * len(cal_atoms[element])), : ] = fp_primes_dict[element]
+                line += num_desc_max * len(cal_atoms[element]) 
+            image_dict["descriptor_primes"] = image_fp_prime_array
         descriptor_list.append(image_dict)
         return descriptor_list
-
-    def _fp_prime_element_row_index_to_image_row_index(
-        self, original_rows, index_arr, num_desc, num_desc_max
-    ):
-        atom_indices_for_specific_element, desc_indices = np.divmod(
-            original_rows, num_desc
-        )
-
-        atom_indices_in_image = index_arr[atom_indices_for_specific_element]
-
-        new_row = atom_indices_in_image * num_desc_max + desc_indices
-        return new_row
 
     def _setup_fingerprint_database(self, save_fps):
         self.get_descriptor_setup_hash()
