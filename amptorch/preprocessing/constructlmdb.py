@@ -62,12 +62,12 @@ def construct_lmdb(paths, elements, Gs, lmdb_path="./data.lmdb", config = {}):
                 data_list.append(do)
             idx += 1
 
-    feature_scaler = NoFeatureScaler(data_list, forcetraining, scaling)
+    feature_scaler = FeatureScaler(data_list, forcetraining, scaling)
     txn = db.begin(write=True)
     txn.put("feature_scaler".encode("ascii"), pickle.dumps(feature_scaler, protocol=-1))
     txn.commit()
 
-    target_scaler = NoTargetScaler(data_list, forcetraining)
+    target_scaler = TargetScaler(data_list, forcetraining)
     txn = db.begin(write=True)
     txn.put("target_scaler".encode("ascii"), pickle.dumps(target_scaler, protocol=-1))
     txn.commit()
