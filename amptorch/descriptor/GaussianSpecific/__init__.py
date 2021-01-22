@@ -617,8 +617,8 @@ class GaussianSpecific():
 
                 else:
 
-                    size_info, fps, cal_atoms[element],_, _, _, _ = self.calculate_fingerprints(
-                        image, element, calc_derivatives=calc_derivatives, log=log
+                    size_info, fps, _,_,_,_ = self.calculate_fingerprints(
+                        image, element, cal_atoms, calc_derivatives=calc_derivatives, log=log
                     )
 
                     num_desc_list.append(size_info[2])
