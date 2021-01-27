@@ -471,9 +471,10 @@ class GaussianSpecific():
                             size_info = np.array(current_element_grp["size_info"])
                             fps = np.array(current_element_grp["fps"])
                         except Exception:
-                            size_info, fps, cal_atoms[element],_, _, _, _ = self.calculate_fingerprints(
+                            size_info, fps,_, _, _, _ = self.calculate_fingerprints(
                                 image,
                                 element,
+                                cal_atoms,
                                 calc_derivatives=calc_derivatives,
                                 log=log,
                             )
@@ -484,9 +485,6 @@ class GaussianSpecific():
                                 )
                                 current_element_grp.create_dataset("fps", data=fps)
                                 
-                                current_element_grp.create_dataset(
-                                    "cal_atoms", cal_atoms[element]
-                                )
                         num_desc_list.append(size_info[2])
                         num_desc_dict[element] = size_info[2]
                         fp_dict[element] = fps
